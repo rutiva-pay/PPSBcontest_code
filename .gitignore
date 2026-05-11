@@ -1,0 +1,51 @@
+# =========================
+# Entorno y Secretos
+# =========================
+.env
+.env.*
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# =========================
+# Python / FastAPI / Backend
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+# alembic.ini commiteado — la URL real viene de DATABASE_URL en env.py
+*.sqlite3
+
+# =========================
+# Node.js / Frontends (Dashboard & Widget)
+# =========================
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+pnpm-debug.log
+.pnpm-store/
+dist/
+build/
+.next/
+out/
+
+# =========================
+# Base de datos local (Docker volumes)
+# =========================
+postgres_data/
+
+# =========================
+# IDEs y SO
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
