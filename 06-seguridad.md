@@ -62,7 +62,6 @@ Este documento describe el modelo de amenazas, controles implementados y roadmap
 
 ```
 Formato: {prefix}_{environment}_{52_chars_base62}
-Ejemplo: sk_live_51HxYzABCDEFghijKLMNopqrSTUVwxYZ0123456789AbCdEf
 ```
 
 **Almacenamiento**:
