@@ -14,3 +14,7 @@ __pycache__/
 !README.md
 .vscode/
 .idea/
+.obsidian/
+.claude/
+venv/
+.venv/

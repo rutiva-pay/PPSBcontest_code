@@ -1,0 +1,27 @@
+databases:
+  - name: rutiva-db
+    plan: free
+    databaseName: rutiva
+    user: rutiva
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: rutiva-api
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rutiva-db
+          property: connectionString
+      - key: API_KEY_PEPPER
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: SENTRY_DSN
+        sync: false

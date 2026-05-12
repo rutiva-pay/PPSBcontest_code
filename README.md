@@ -255,6 +255,38 @@ Verifica recepción del webhook en `webhook.site` (o ngrok hacia receiver local)
 
 ## Deploy
 
+### Producción: Render (Blueprint)
+
+Render free tier soporta web service Docker + Postgres managed.
+
+**Opción A — Deploy desde repo (recomendado)**
+
+1. Push a GitHub.
+2. En Render: **New → Blueprint**, conectar repo, Render detecta `render.yaml`.
+3. Aprobar creación de `rutiva-db` (Postgres) + `rutiva-api` (web Docker).
+4. `API_KEY_PEPPER` se autogenera. `SENTRY_DSN` opcional (sync: false → setear manual si se usa).
+5. `DATABASE_URL` se inyecta automáticamente desde la DB (`connectionString` externa, host `*.render.com` → SSL auto-detectado por el código).
+6. Deploy. `CMD` corre `alembic upgrade head && uvicorn`. Health check en `/health`.
+
+**Opción B — Manual**
+
+1. Crear Postgres en Render (free).
+2. Crear Web Service → Docker → conectar repo. Region igual a la DB.
+3. Env vars:
+   ```
+   DATABASE_URL=<External Database URL de Render>
+   API_KEY_PEPPER=<openssl rand -hex 32>
+   ENVIRONMENT=production
+   SENTRY_DSN=<opcional>
+   ```
+4. Health check path: `/health`.
+
+**Notas Render**
+
+- Free tier web service duerme tras 15 min sin tráfico (cold start ~30s).
+- Free tier Postgres expira a los 90 días — backup periódico.
+- Render Postgres requiere SSL siempre. Código auto-añade `ssl=require` al detectar `render.com` en el host.
+
 ### Producción: Koyeb + Supabase (free tier)
 
 **Postgres**: Supabase project, usar **Transaction pooler** (puerto 6543).

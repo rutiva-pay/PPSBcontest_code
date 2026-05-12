@@ -22,6 +22,7 @@ if _db_url.startswith("postgres://"):
     _db_url = _db_url.replace("postgres://", "postgresql+asyncpg://", 1)
 elif _db_url.startswith("postgresql://"):
     _db_url = _db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+_ssl_required = "sslmode=require" in _db_url or "ssl=require" in _db_url
 if "?" in _db_url:
     _b, _, _qs = _db_url.partition("?")
     _kept = [p for p in _qs.split("&") if not p.startswith("sslmode=") and not p.startswith("ssl=")]
@@ -84,7 +85,7 @@ async def run_async_migrations() -> None:
     """
 
     _ca: dict = {}
-    if any(h in _db_url for h in ("supabase.co", "supabase.com", "neon.tech")):
+    if _ssl_required or any(h in _db_url for h in ("supabase.co", "supabase.com", "neon.tech", "render.com")):
         _ca["ssl"] = "require"
     if ":6543/" in _db_url or "pooler.supabase.com:6543" in _db_url:
         _ca["statement_cache_size"] = 0

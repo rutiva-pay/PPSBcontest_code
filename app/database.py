@@ -18,7 +18,7 @@ if "?" in DATABASE_URL:
     DATABASE_URL = base + ("?" + "&".join(kept) if kept else "")
 
 _connect_args: dict = {}
-if _ssl_required or any(h in DATABASE_URL for h in ("supabase.co", "supabase.com", "neon.tech")):
+if _ssl_required or any(h in DATABASE_URL for h in ("supabase.co", "supabase.com", "neon.tech", "render.com")):
     _connect_args["ssl"] = "require"
 
 # Supabase transaction pooler (port 6543) is PgBouncer in transaction mode —
