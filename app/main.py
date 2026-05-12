@@ -61,7 +61,27 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Rutiva API", lifespan=lifespan)
+app = FastAPI(
+    title="Rutiva API",
+    description=(
+        "API de pagos C2P (Customer-to-Payment) para el ecosistema venezolano. "
+        "Rutiva permite a comerciantes aceptar pagos desde cualquier banco "
+        "venezolano usando el flujo OTP-bancario estándar, con una experiencia "
+        "developer-first inspirada en las mejores prácticas globales.\n\n"
+        "**Documentación pública**: https://docs.rutiva.dev\n"
+        "**Estado**: MVP funcional. Integración con Bancaribe Open Banking en proceso."
+    ),
+    version="0.1.0",
+    contact={"name": "Equipo Rutiva", "url": "https://rutiva.dev"},
+    license_info={"name": "Proprietary"},
+    lifespan=lifespan,
+    openapi_tags=[
+        {"name": "payments", "description": "Crear, confirmar, cancelar y consultar payment_intents."},
+        {"name": "webhooks", "description": "Endpoints receptores registrados por el comerciante."},
+        {"name": "banks", "description": "Lista pública de bancos venezolanos soportados."},
+        {"name": "meta", "description": "Health checks y metadata del servicio."},
+    ],
+)
 app.add_middleware(WidgetCORSMiddleware)
 
 app.include_router(payments.router)
@@ -69,6 +89,6 @@ app.include_router(webhook_endpoints.router)
 app.include_router(banks.router)
 
 
-@app.get("/health")
+@app.get("/health", tags=["meta"], summary="Health check")
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "service": "rutiva-api"}

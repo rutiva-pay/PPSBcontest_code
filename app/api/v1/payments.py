@@ -68,7 +68,19 @@ def _intent_payload(intent: PaymentIntent) -> dict:
     }
 
 
-@router.post("", response_model=PaymentCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=PaymentCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear payment_intent",
+    description="Crea un payment_intent en estado `created` y devuelve un `client_secret` (una sola vez).",
+    responses={
+        201: {"description": "Payment intent creado."},
+        200: {"description": "Replay idempotente (Idempotency-Key reutilizada con body idéntico)."},
+        401: {"description": "API key inválida o ausente."},
+        422: {"description": "Validación: datos venezolanos mal formados, o `idempotency_key_mismatch`."},
+    },
+)
 async def create_payment(
     payload: PaymentCreateRequest,
     background: BackgroundTasks,
@@ -161,7 +173,20 @@ async def confirm_payment_preflight(intent_id: str) -> Response:
     return Response(status_code=204)
 
 
-@router.post("/{intent_id}/confirm", response_model=PaymentResponse)
+@router.post(
+    "/{intent_id}/confirm",
+    response_model=PaymentResponse,
+    summary="Confirmar payment_intent",
+    description="Confirma con OTP. Acepta `Authorization: Bearer sk_xxx` (backend) o body `client_secret` (Widget).",
+    responses={
+        200: {"description": "Confirmación procesada (status `succeeded` o `failed`)."},
+        400: {"description": "`payment_expired` si pasó `expires_at`."},
+        401: {"description": "Falta autenticación (ni sk_ ni client_secret)."},
+        403: {"description": "`invalid_client_secret`."},
+        404: {"description": "Payment intent no existe o no pertenece al merchant."},
+        409: {"description": "Estado no permite confirmación."},
+    },
+)
 async def confirm_payment(
     intent_id: UUID,
     payload: PaymentConfirmRequest,
@@ -289,7 +314,12 @@ async def confirm_payment(
     return intent
 
 
-@router.get("", response_model=PaymentListResponse)
+@router.get(
+    "",
+    response_model=PaymentListResponse,
+    summary="Listar payment_intents",
+    description="Listado paginado por cursor (created_at + id, descendente).",
+)
 async def list_payments(
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = Query(default=None),
@@ -323,7 +353,18 @@ async def list_payments(
     )
 
 
-@router.post("/{intent_id}/cancel", response_model=PaymentResponse)
+@router.post(
+    "/{intent_id}/cancel",
+    response_model=PaymentResponse,
+    summary="Cancelar payment_intent",
+    description="Cancela un intent en estado `created`. Solo modo backend (sk_).",
+    responses={
+        200: {"description": "Cancelado."},
+        400: {"description": "Estado no permite cancelar."},
+        401: {"description": "API key inválida o ausente."},
+        404: {"description": "No existe o no pertenece al merchant."},
+    },
+)
 async def cancel_payment(
     intent_id: UUID,
     background: BackgroundTasks,
@@ -367,7 +408,12 @@ async def cancel_payment(
     return intent
 
 
-@router.get("/{intent_id}", response_model=PaymentResponse)
+@router.get(
+    "/{intent_id}",
+    response_model=PaymentResponse,
+    summary="Obtener payment_intent",
+    responses={404: {"description": "No existe o no pertenece al merchant."}},
+)
 async def get_payment(
     intent_id: UUID,
     db: AsyncSession = Depends(get_db),
