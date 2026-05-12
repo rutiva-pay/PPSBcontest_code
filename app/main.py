@@ -7,32 +7,40 @@ from fastapi import FastAPI
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from app.api.v1 import payments, webhook_endpoints
+from app.api.v1 import banks, payments, webhook_endpoints
 from app.bootstrap import seed_dev_fixtures
 
 _CONFIRM_PATH_RE = re.compile(r"^/v1/payments/[^/]+/confirm/?$")
+_BANKS_PATH_RE = re.compile(r"^/v1/banks/?$")
+
+
+def _is_public_widget_path(path: str) -> tuple[bool, str]:
+    if _CONFIRM_PATH_RE.match(path):
+        return True, "POST, OPTIONS"
+    if _BANKS_PATH_RE.match(path):
+        return True, "GET, OPTIONS"
+    return False, ""
 
 
 class WidgetCORSMiddleware(BaseHTTPMiddleware):
-    """CORS abierto solo para POST/OPTIONS en /v1/payments/{id}/confirm (Widget)."""
+    """CORS abierto para endpoints consumidos directamente por el Widget público."""
 
     async def dispatch(self, request, call_next):
-        path = request.url.path
-        is_confirm = bool(_CONFIRM_PATH_RE.match(path))
-        if is_confirm and request.method == "OPTIONS":
+        is_public, methods = _is_public_widget_path(request.url.path)
+        if is_public and request.method == "OPTIONS":
             return Response(
                 status_code=204,
                 headers={
                     "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Methods": methods,
                     "Access-Control-Allow-Headers": "Content-Type",
                     "Access-Control-Max-Age": "600",
                 },
             )
         response = await call_next(request)
-        if is_confirm:
+        if is_public:
             response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+            response.headers["Access-Control-Allow-Methods"] = methods
             response.headers["Access-Control-Allow-Headers"] = "Content-Type"
         return response
 
@@ -58,6 +66,7 @@ app.add_middleware(WidgetCORSMiddleware)
 
 app.include_router(payments.router)
 app.include_router(webhook_endpoints.router)
+app.include_router(banks.router)
 
 
 @app.get("/health")
