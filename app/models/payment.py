@@ -26,6 +26,7 @@ class PaymentIntent(Base):
     failure_code: Mapped[str] = mapped_column(String(50), nullable=True)
     failure_message: Mapped[str] = mapped_column(String, nullable=True)
     idempotency_key: Mapped[str] = mapped_column(String(100), nullable=True)
+    client_secret_hash: Mapped[str] = mapped_column(String(64), nullable=True)
     metadata_data: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB, nullable=False, server_default='{}')
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=text("now()"))
     updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=text("now()"))

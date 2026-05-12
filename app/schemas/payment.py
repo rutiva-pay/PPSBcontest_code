@@ -14,7 +14,7 @@ class PaymentCreateRequest(BaseModel):
 
 
 class PaymentConfirmRequest(BaseModel):
-    client_secret: str
+    client_secret: Optional[str] = None
     otp: str = Field(..., min_length=4, max_length=12)
 
 
@@ -40,6 +40,10 @@ class PaymentResponse(BaseModel):
     confirmed_at: Optional[datetime] = None
     succeeded_at: Optional[datetime] = None
     failed_at: Optional[datetime] = None
+
+
+class PaymentCreateResponse(PaymentResponse):
+    client_secret: Optional[str] = None
 
 
 class PaymentListResponse(BaseModel):

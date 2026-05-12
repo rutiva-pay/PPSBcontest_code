@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\)\\) for f in ['app/main.py','app/api/v1/payments.py','app/api/deps.py','app/models/payment.py','app/schemas/payment.py']]\")"
+    ]
+  }
+}

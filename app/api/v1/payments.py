@@ -1,13 +1,16 @@
 import base64
+import hashlib
+import hmac
+import re
 import secrets
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import AuthContext, get_auth_context, get_bank_adapter
+from app.api.deps import AuthContext, get_auth_context, get_bank_adapter, get_optional_auth_context
 from app.banking.base import BankAdapter
 from app.banking.schemas import C2PRequest
 from app.database import get_db
@@ -15,11 +18,14 @@ from app.models import MerchantAccount, PaymentIntent
 from app.schemas.payment import (
     PaymentConfirmRequest,
     PaymentCreateRequest,
+    PaymentCreateResponse,
     PaymentListResponse,
     PaymentResponse,
 )
 from app.services.events import EventService
 from app.services.webhooks import WebhookService
+
+_IDEMPOTENCY_KEY_RE = re.compile(r"^[A-Za-z0-9_\-:.]+$")
 
 router = APIRouter(prefix="/v1/payments", tags=["payments"])
 
@@ -59,15 +65,49 @@ def _intent_payload(intent: PaymentIntent) -> dict:
     }
 
 
-@router.post("", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=PaymentCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_payment(
     payload: PaymentCreateRequest,
     background: BackgroundTasks,
+    response: Response,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
 ) -> PaymentIntent:
+    """Crea un payment_intent.
+
+    Header opcional `Idempotency-Key` (max 100 chars, regex `^[A-Za-z0-9_\\-:.]+$`).
+    Si se repite la misma key con body idéntico, devuelve el intent existente con HTTP 200.
+    Si la key se repite con body distinto, devuelve 422 `idempotency_key_mismatch`.
+    """
+    if idempotency_key is not None:
+        if len(idempotency_key) > 100 or not _IDEMPOTENCY_KEY_RE.match(idempotency_key):
+            raise HTTPException(status_code=422, detail="invalid_idempotency_key")
+        res = await db.execute(
+            select(PaymentIntent).where(
+                PaymentIntent.merchant_id == auth.merchant_id,
+                PaymentIntent.idempotency_key == idempotency_key,
+            )
+        )
+        existing = res.scalar_one_or_none()
+        if existing is not None:
+            if (
+                existing.amount_cents != payload.amount
+                or existing.currency != payload.currency
+                or existing.customer_phone != payload.customer_phone
+                or existing.customer_id_document != payload.customer_id_document
+                or existing.customer_bank_code != payload.customer_bank_code
+            ):
+                raise HTTPException(status_code=422, detail="idempotency_key_mismatch")
+            response.status_code = status.HTTP_200_OK
+            return existing
+
+    external_id = _new_external_id()
+    client_secret_plain = f"{external_id}_secret_{secrets.token_urlsafe(24)}"
+    client_secret_hash = hashlib.sha256(client_secret_plain.encode("utf-8")).hexdigest()
+
     intent = PaymentIntent(
-        external_id=_new_external_id(),
+        external_id=external_id,
         merchant_id=auth.merchant_id,
         merchant_account_id=auth.merchant_account_id,
         amount_cents=payload.amount,
@@ -77,6 +117,8 @@ async def create_payment(
         customer_id_document=payload.customer_id_document,
         customer_bank_code=payload.customer_bank_code,
         flow_mode="direct_to_merchant",
+        idempotency_key=idempotency_key,
+        client_secret_hash=client_secret_hash,
     )
     db.add(intent)
     await db.flush()
@@ -104,7 +146,15 @@ async def create_payment(
 
     for aid in attempt_ids:
         background.add_task(WebhookService.dispatch, aid)
-    return intent
+
+    resp = PaymentCreateResponse.model_validate(intent)
+    resp.client_secret = client_secret_plain
+    return resp
+
+
+@router.options("/{intent_id}/confirm", include_in_schema=False)
+async def confirm_payment_preflight(intent_id: str) -> Response:
+    return Response(status_code=204)
 
 
 @router.post("/{intent_id}/confirm", response_model=PaymentResponse)
@@ -113,12 +163,36 @@ async def confirm_payment(
     payload: PaymentConfirmRequest,
     background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth_context),
+    auth: AuthContext | None = Depends(get_optional_auth_context),
     bank: BankAdapter = Depends(get_bank_adapter),
 ) -> PaymentIntent:
+    """Confirma un payment_intent con OTP del cliente.
+
+    Dos modos de autenticación:
+    - Backend: header `Authorization: Bearer sk_xxx` (modo comerciante).
+    - Widget: body `client_secret` emitido en la respuesta del create (sin API key).
+    Si ambos llegan, prevalece sk_. Sin ninguno: 401.
+    """
     intent = await db.get(PaymentIntent, intent_id)
-    if intent is None or intent.merchant_id != auth.merchant_id:
+    if intent is None:
         raise HTTPException(status_code=404, detail="payment_intent_not_found")
+
+    if auth is not None:
+        if intent.merchant_id != auth.merchant_id:
+            raise HTTPException(status_code=404, detail="payment_intent_not_found")
+        actor_id = auth.api_key_id
+        actor_type = "api_key"
+    else:
+        if not payload.client_secret:
+            raise HTTPException(status_code=401, detail="authentication_required")
+        prefix = payload.client_secret.split("_secret_", 1)[0]
+        if prefix != intent.external_id or intent.client_secret_hash is None:
+            raise HTTPException(status_code=403, detail="invalid_client_secret")
+        provided_hash = hashlib.sha256(payload.client_secret.encode("utf-8")).hexdigest()
+        if not hmac.compare_digest(provided_hash, intent.client_secret_hash):
+            raise HTTPException(status_code=403, detail="invalid_client_secret")
+        actor_id = None
+        actor_type = "client_secret"
 
     if intent.status not in ("created", "requires_confirmation"):
         raise HTTPException(
@@ -166,12 +240,12 @@ async def confirm_payment(
         payload=event_payload,
         related_entity_id=intent.id,
         related_entity_type="payment_intent",
-        actor_id=auth.api_key_id,
-        actor_type="api_key",
+        actor_id=actor_id,
+        actor_type=actor_type,
     )
     attempt_ids = await WebhookService.record_attempts(
         db,
-        merchant_id=auth.merchant_id,
+        merchant_id=intent.merchant_id,
         event_type=final_event_type,
         payload=event_payload,
         payment_intent_id=intent.id,

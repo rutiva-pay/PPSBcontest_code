@@ -68,5 +68,15 @@ async def get_auth_context(
     )
 
 
+async def get_optional_auth_context(
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+    db: AsyncSession = Depends(get_db),
+) -> AuthContext | None:
+    if not authorization and not x_api_key:
+        return None
+    return await get_auth_context(authorization=authorization, x_api_key=x_api_key, db=db)
+
+
 async def get_bank_adapter() -> BankAdapter:
     return MockBankAdapter()
