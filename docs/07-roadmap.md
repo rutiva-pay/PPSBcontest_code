@@ -54,9 +54,9 @@ gantt
 - 🚧 Integración real Bancaribe `registrarPagoC2pApi` (Día 7).
 - 🚧 Enforcement Idempotency-Key, cifrado pgcrypto, masking PII (Día 6).
 - 🚧 Dashboard Next.js + shadcn con datos seed.
-- 🚧 Checkout Widget embebible.
+- ✅ Checkout Widget embebible.
 - 🚧 Tienda demo end-to-end.
-- 🚧 Landing page profesional.
+- ✅ Landing page profesional.
 - 🚧 Pitch deck + video demo.
 - 🚧 Formulario de aplicación a Shark Bank.
 

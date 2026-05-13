@@ -3,7 +3,7 @@
 > **Versión**: 1.1
 > **Fecha**: 11 de mayo de 2026
 > **Stack actual MVP**: Python 3.12 / FastAPI / PostgreSQL 16 / SQLAlchemy 2.0 async / Alembic / asyncpg / Sentry
-> **Stack planeado (post-MVP)**: + Next.js Dashboard, Checkout Widget (TS/Vite), Resend, Supabase Auth
+> **Stack planeado (post-MVP)**: + Next.js Dashboard, Resend, Supabase Auth
 
 Este documento describe la arquitectura del MVP (Fase 1) usando el modelo C4 (Context, Containers, Components). Las decisiones arquitectónicas tomadas aquí permiten evolución a Fase 2 (multi-banco) y Fase 3 (modelo agregador) sin reescritura.
 
@@ -21,7 +21,8 @@ Implementado:
 - Docker Compose local con Postgres 16; Dockerfile productivo corre `alembic upgrade head` + uvicorn.
 
 Pendiente / no en código aún:
-- Dashboard Next.js, Checkout Widget, Tienda demo.
+- Dashboard Next.js.
+- Tienda demo.
 - Endpoints `/v1/banks`, `/v1/api_keys`, `/v1/payments/{id}/cancel`, GET/DELETE de un `webhook_endpoint`.
 - `client_secret` real (solo expone payment via API key).
 - Enforcement de `Idempotency-Key` (columna existe, header no validado).
@@ -117,7 +118,7 @@ graph TB
 | **Webhook Dispatcher** | FastAPI `BackgroundTasks` (MVP, **un intento**) → ARQ/Celery con backoff (Fase 2) | Envío asíncrono outbox. Firma HMAC-SHA256 header `X-Pasarela-Signature`. |
 | **Bank Adapter** | Strategy Pattern. `MockBankAdapter` activo. `BancaribeAdapter` stub. | Aísla integración bancaria del core. |
 | **Sentry** | SaaS (opcional vía `SENTRY_DSN`) | Captura de errores. |
-| **Checkout Widget** (planeado) | TypeScript, Vite library mode | Modal embebible. No en repo aún. |
+| **Checkout Widget** | TypeScript, Vite library mode | Modal embebible ya disponible para el flujo C2P. |
 | **Dashboard** (planeado) | Next.js 15, Tailwind, shadcn/ui, Supabase Auth | UI comerciante. No en repo aún. |
 | **Resend** (planeado) | SaaS | Emails transaccionales. No integrado aún. |
 

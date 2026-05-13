@@ -12,7 +12,7 @@ El backend implementa la versión simplificada:
 - `POST /v1/payments/{id}/confirm` → usa `MockBankAdapter` (80% éxito aleatorio, latencia 1-3s). Transición directa `created` → `succeeded`/`failed`. Sin estados intermedios `pending`/`processing`.
 - Webhook firmado HMAC-SHA256 (`X-Pasarela-Signature: t=...,v1=...`), un único intento.
 
-No implementado (🟡): Checkout Widget, `client_secret`, integración real Bancaribe (`BancaribeAdapter` es stub), masking de PII, expiración de intents, conciliación, retries con backoff.
+No implementado (🟡): integración real Bancaribe (`BancaribeAdapter` es stub), masking de PII, expiración de intents, conciliación, retries con backoff.
 
 ---
 
@@ -22,7 +22,7 @@ No implementado (🟡): Checkout Widget, `client_secret`, integración real Banc
 |---|---|
 | **Cliente Final** | Persona natural haciendo una compra en una tienda online. |
 | **E-commerce del Comerciante** | Sitio web con Checkout Widget de Pasarela integrado. |
-| **Checkout Widget** | Modal JS embebible que Pasarela sirve via CDN. |
+| **Checkout Widget** | Modal JS embebible ya disponible, servido via CDN. |
 | **Backend del Comerciante** | Servidor del comerciante (puede ser WooCommerce, custom, etc.). |
 | **Core API (Pasarela)** | Backend FastAPI. |
 | **Open Banking Bancaribe** | Endpoint `registrarPagoC2pApi` de C2P2. |

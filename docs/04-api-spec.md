@@ -149,7 +149,7 @@ Confirma el pago con la clave OTP. MVP actual lo expone via `sk` (Authorization)
 }
 ```
 
-Nota: el schema requiere `client_secret` pero en MVP **no se valida** (auth real vía API key). El estado de entrada aceptado es `created` o `requires_confirmation`. La llamada usa `MockBankAdapter` (80% éxito aleatorio).
+Nota: el schema requiere `client_secret` pero en MVP **no se valida** (auth real vía API key). El estado de entrada aceptado es `created` o `requires_confirmation`. La llamada usa `MockBankAdapter` (80% éxito aleatorio) y el flujo frontend con widget ya está disponible.
 
 **Response 200 (éxito):**
 ```json
