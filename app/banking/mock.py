@@ -8,10 +8,6 @@ from app.banking.schemas import C2PRequest, C2PResponse, OperationStatus
 
 SUPPORTED_BANKS: list[dict] = [
     {"code": "0114", "name": "Bancaribe"},
-    {"code": "0191", "name": "BNC"},
-    {"code": "0105", "name": "Mercantil"},
-    {"code": "0102", "name": "Banco de Venezuela"},
-    {"code": "0108", "name": "Provincial"},
 ]
 
 SUPPORTED_BANK_CODES: frozenset[str] = frozenset(b["code"] for b in SUPPORTED_BANKS)

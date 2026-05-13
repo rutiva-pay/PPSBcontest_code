@@ -11,7 +11,11 @@
       "Bash(ls .venv)",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/database.py'\\).read\\(\\)\\); ast.parse\\(open\\('alembic/env.py'\\).read\\(\\)\\)\")",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/main.py'\\).read\\(\\)\\)\")",
-      "Bash(python3 -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\)\\) for f in ['app/main.py','app/api/v1/admin.py','app/schemas/admin.py']]\")"
+      "Bash(python3 -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\)\\) for f in ['app/main.py','app/api/v1/admin.py','app/schemas/admin.py']]\")",
+      "Bash(python3 -c \"import secrets; print\\('pk_test_' + secrets.token_urlsafe\\(24\\)\\)\")",
+      "Bash(curl -sS -X POST https://rutiva-api.onrender.com/v1/admin/merchants -H 'X-Admin-Token: add458aec6d692a85cd507cf17ebd0a6a45280e25c640418c16f043ca51a5a86' -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -sS https://rutiva-api.onrender.com/v1/payments -H 'Authorization: Bearer sk_test_OFqWDRFwSdZCQ9SPXYFhPVNxlfbZDnHccSitOQ' -w '\\\\nHTTP %{http_code}\\\\n')",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/banking/mock.py'\\).read\\(\\)\\)\")"
     ]
   }
 }
