@@ -52,6 +52,22 @@ def _decode_cursor(cursor: str) -> tuple[datetime, UUID]:
 PAYMENT_INTENT_TTL = timedelta(minutes=15)
 
 
+async def _resolve_intent(db: AsyncSession, intent_ref: str) -> PaymentIntent | None:
+    """Resolver payment_intent por UUID o por external_id (pi_xxx)."""
+    try:
+        intent_uuid = UUID(intent_ref)
+    except ValueError:
+        intent_uuid = None
+    if intent_uuid is not None:
+        intent = await db.get(PaymentIntent, intent_uuid)
+        if intent is not None:
+            return intent
+    res = await db.execute(
+        select(PaymentIntent).where(PaymentIntent.external_id == intent_ref)
+    )
+    return res.scalar_one_or_none()
+
+
 def _intent_payload(intent: PaymentIntent) -> dict:
     return {
         "id": str(intent.id),
@@ -188,7 +204,7 @@ async def confirm_payment_preflight(intent_id: str) -> Response:
     },
 )
 async def confirm_payment(
-    intent_id: UUID,
+    intent_id: str,
     payload: PaymentConfirmRequest,
     background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
@@ -201,8 +217,10 @@ async def confirm_payment(
     - Backend: header `Authorization: Bearer sk_xxx` (modo comerciante).
     - Widget: body `client_secret` emitido en la respuesta del create (sin API key).
     Si ambos llegan, prevalece sk_. Sin ninguno: 401.
+
+    `intent_id` en el path acepta tanto el UUID interno como el `external_id` (`pi_xxx`).
     """
-    intent = await db.get(PaymentIntent, intent_id)
+    intent = await _resolve_intent(db, intent_id)
     if intent is None:
         raise HTTPException(status_code=404, detail="payment_intent_not_found")
 
@@ -366,13 +384,16 @@ async def list_payments(
     },
 )
 async def cancel_payment(
-    intent_id: UUID,
+    intent_id: str,
     background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
 ) -> PaymentIntent:
-    """Cancela un payment_intent en estado `created`. Solo backend (sk_)."""
-    intent = await db.get(PaymentIntent, intent_id)
+    """Cancela un payment_intent en estado `created`. Solo backend (sk_).
+
+    `intent_id` acepta UUID interno o `external_id` (`pi_xxx`).
+    """
+    intent = await _resolve_intent(db, intent_id)
     if intent is None or intent.merchant_id != auth.merchant_id:
         raise HTTPException(status_code=404, detail="payment_intent_not_found")
     if intent.status != "created":
@@ -415,11 +436,12 @@ async def cancel_payment(
     responses={404: {"description": "No existe o no pertenece al merchant."}},
 )
 async def get_payment(
-    intent_id: UUID,
+    intent_id: str,
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
 ) -> PaymentIntent:
-    intent = await db.get(PaymentIntent, intent_id)
+    """Obtener payment_intent por UUID o `external_id` (`pi_xxx`)."""
+    intent = await _resolve_intent(db, intent_id)
     if intent is None or intent.merchant_id != auth.merchant_id:
         raise HTTPException(status_code=404, detail="payment_intent_not_found")
     return intent
