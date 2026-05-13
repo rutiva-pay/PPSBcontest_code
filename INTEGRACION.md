@@ -63,14 +63,12 @@ curl https://rutiva-api.onrender.com/v1/banks
 {
   "object": "list",
   "data": [
-    { "code": "0114", "name": "Bancaribe" },
-    { "code": "0191", "name": "BNC" },
-    { "code": "0105", "name": "Mercantil" },
-    { "code": "0102", "name": "Banco de Venezuela" },
-    { "code": "0108", "name": "Provincial" }
+    { "code": "0114", "name": "Bancaribe" }
   ]
 }
 ```
+
+> **Estado actual MVP**: solo Bancaribe está habilitado. La lista crecerá conforme se integren más adquirentes. Tu UI debería poblarse dinámicamente desde este endpoint, no hardcodear.
 
 Frontend (JS):
 
@@ -186,6 +184,8 @@ El header `Idempotency-Key` (opcional pero recomendado) evita duplicar intents s
 ## 5. Confirmar el pago (frontend, `client_secret`)
 
 `POST /v1/payments/{intent_id}/confirm`
+
+`{intent_id}` acepta tanto el UUID interno como el `external_id` (`pi_xxx`). Estilo Stripe.
 
 El frontend recolecta el OTP que el cliente recibió por SMS de su banco, y confirma:
 

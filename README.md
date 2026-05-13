@@ -132,10 +132,19 @@ GET /health → {"status": "ok"}
 
 | Método | Path | Descripción |
 |---|---|---|
-| POST | `/v1/payments` | Crear payment intent (estado `created`) |
-| POST | `/v1/payments/{id}/confirm` | Confirmar con OTP, llama bank.initiate_c2p, transita a `succeeded`/`failed` |
-| GET | `/v1/payments/{id}` | Detalle |
-| GET | `/v1/payments?limit=20&cursor=<b64>` | Listado paginado (cursor compuesto created_at + id) |
+| POST | `/v1/payments` | Crear payment intent (estado `created`). Header opcional `Idempotency-Key`. Devuelve `client_secret` UNA SOLA VEZ. |
+| POST | `/v1/payments/{id}/confirm` | Confirmar con OTP. Acepta `Bearer sk_` o body `client_secret` (modo widget, sin auth). |
+| POST | `/v1/payments/{id}/cancel` | Cancelar intent en estado `created`. Solo `sk_`. |
+| GET | `/v1/payments/{id}` | Detalle. Sin `client_secret` en response. |
+| GET | `/v1/payments?limit=20&cursor=<b64>` | Listado paginado (cursor compuesto created_at + id). |
+
+`{id}` en los paths acepta tanto el UUID interno como el `external_id` (`pi_xxx`) — estilo Stripe.
+
+### Bancos
+
+| Método | Path | Descripción |
+|---|---|---|
+| GET | `/v1/banks` | Lista pública de bancos soportados. Sin auth. CORS abierto. Cache 1h en memoria. MVP: solo Bancaribe. |
 
 ### Webhook endpoints
 
@@ -143,6 +152,13 @@ GET /health → {"status": "ok"}
 |---|---|---|
 | POST | `/v1/webhook_endpoints` | Registrar URL receptora. **Devuelve `signing_secret` plaintext UNA SOLA VEZ** |
 | GET | `/v1/webhook_endpoints?limit=&cursor=` | Listado paginado |
+
+### Meta
+
+| Método | Path | Descripción |
+|---|---|---|
+| GET | `/health` | Health check JSON: `{"status":"ok","service":"rutiva-api"}`. |
+| GET | `/ping` | Keep-alive plaintext (`pong`). Para UptimeRobot u otros monitores. |
 
 ## Provisión de merchants + API keys (admin)
 
@@ -409,7 +425,9 @@ docker run --rm --network host \
 - **`signing_secret_encrypted`**: actualmente guarda plaintext bytes. TODO: cifrar con Fernet/KMS antes de prod real.
 - **Dev API key seed**: solo se ejecuta cuando `ENVIRONMENT != production`. En prod debes crear keys reales vía endpoint admin (pendiente).
 - **Webhook retries**: 1 solo intento por ahora. Worker durable para reintentos exponenciales: pendiente.
-- **`client_secret`** en confirm: recibido pero no validado. Pendiente: persistir hash al crear, comparar al confirm.
+- **`client_secret`** en confirm: hash sha256 persistido en `payment_intents.client_secret_hash`. Comparado timing-safe con `hmac.compare_digest` al confirm.
+- **Path params**: `intent_id` se resuelve por UUID o `external_id` (`pi_xxx`). Lookup intenta UUID primero, fallback a `external_id`.
+- **Lista de bancos**: hardcodeada en `app/banking/mock.py` (`SUPPORTED_BANKS`). Validador Pydantic de `customer_bank_code` referencia `SUPPORTED_BANK_CODES`. Cambiar ahí para agregar/quitar.
 
 ## Roadmap
 
