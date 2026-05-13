@@ -102,6 +102,7 @@ Al primer arranque, `bootstrap.py` seedea:
 | `SENTRY_DSN` | DSN Sentry para captura de errores | No |
 | `ENVIRONMENT` | `development`, `staging`, `production`. En `production` no se ejecuta el seed dev | No (default `development`) |
 | `PORT` | Puerto HTTP (lo inyecta Koyeb) | No (default 8000) |
+| `ADMIN_TOKEN` | Token estático para endpoints `/v1/admin/*` (crear merchants/keys). Mín 32 chars. Si no está seteado, los endpoints admin responden 503. | No (deshabilita admin) |
 
 ## Autenticación
 
@@ -142,6 +143,64 @@ GET /health → {"status": "ok"}
 |---|---|---|
 | POST | `/v1/webhook_endpoints` | Registrar URL receptora. **Devuelve `signing_secret` plaintext UNA SOLA VEZ** |
 | GET | `/v1/webhook_endpoints?limit=&cursor=` | Listado paginado |
+
+## Provisión de merchants + API keys (admin)
+
+Endpoint privado para crear comerciantes con su cuenta default y su primera API key. **Requiere `ADMIN_TOKEN` seteado en env.** Si no está seteado, todos los endpoints `/v1/admin/*` devuelven `503 admin_disabled` — comportamiento intencional para que prod sin token quede totalmente bloqueado.
+
+### Setup
+
+1. Generar token:
+   ```bash
+   openssl rand -hex 32
+   ```
+2. Render dashboard → Service → Environment → agregar `ADMIN_TOKEN=<valor>`. Save → redeploy.
+
+### Crear merchant + sk_
+
+`POST /v1/admin/merchants`
+
+```bash
+curl -X POST https://rutiva-api.onrender.com/v1/admin/merchants \
+  -H "X-Admin-Token: $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "legal_name": "Mi Comercio C.A.",
+    "rif": "J-12345678-9",
+    "contact_email": "ops@micomercio.com",
+    "contact_phone": "04141234567",
+    "acquiring_bank": "0114",
+    "account_number": "01140000001234567890",
+    "api_key_label": "production key",
+    "environment": "live"
+  }'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "merchant_id": "uuid",
+  "merchant_external_id": "merch_xxx",
+  "merchant_account_id": "uuid",
+  "api_key_id": "uuid",
+  "api_key": "sk_live_xxxxxxxxxxxxxxxxxxxxxx",
+  "environment": "live"
+}
+```
+
+**Guardar `api_key` ahora — no se puede recuperar después** (solo hash en DB).
+
+Errores:
+
+| HTTP | `detail` | Causa |
+|---|---|---|
+| 401 | `invalid_admin_token` | Header faltante o incorrecto. |
+| 409 | `merchant_rif_exists` | RIF ya registrado. |
+| 422 | validation | Formato RIF/email/bank inválido. |
+| 503 | `admin_disabled` | `ADMIN_TOKEN` no seteado en env. |
+
+El endpoint está marcado `include_in_schema=False` — no aparece en `/docs` Swagger UI para no exponerlo públicamente.
 
 ## Webhooks salientes
 

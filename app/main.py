@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse, Response
 
-from app.api.v1 import banks, payments, webhook_endpoints
+from app.api.v1 import admin, banks, payments, webhook_endpoints
 from app.bootstrap import seed_dev_fixtures
 
 _CONFIRM_PATH_RE = re.compile(r"^/v1/payments/[^/]+/confirm/?$")
@@ -87,6 +87,7 @@ app.add_middleware(WidgetCORSMiddleware)
 app.include_router(payments.router)
 app.include_router(webhook_endpoints.router)
 app.include_router(banks.router)
+app.include_router(admin.router)
 
 
 @app.get("/health", tags=["meta"], summary="Health check")

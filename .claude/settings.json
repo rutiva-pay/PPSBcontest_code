@@ -10,7 +10,8 @@
       "Bash(ls venv *)",
       "Bash(ls .venv)",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/database.py'\\).read\\(\\)\\); ast.parse\\(open\\('alembic/env.py'\\).read\\(\\)\\)\")",
-      "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/main.py'\\).read\\(\\)\\)\")"
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/main.py'\\).read\\(\\)\\)\")",
+      "Bash(python3 -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\)\\) for f in ['app/main.py','app/api/v1/admin.py','app/schemas/admin.py']]\")"
     ]
   }
 }
